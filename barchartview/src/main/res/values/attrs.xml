@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <declare-styleable name="BarChartView">
+        <attr name="leftAxisWidth" format="dimension" />
+        <attr name="leftAxisColor" format="color" />
+        <attr name="leftAxisTextSize" format="dimension" />
+        <attr name="leftAxisTextColor" format="color" />
+
+        <attr name="bottomAxisWidth" format="dimension" />
+        <attr name="bottomAxisColor" format="color" />
+        <attr name="bottomAxisTextSize" format="dimension" />
+        <attr name="bottomAxisTextColor" format="color" />
+
+        <attr name="orientationGuidesWidth" format="dimension" />
+        <attr name="orientationGuidesColor" format="color" />
+        <attr name="orientationGuidesStyle">
+            <flag name="normal" value="0"/>
+            <flag name="dashed" value="1"/>
+        </attr>
+
+        <attr name="verticalGuidesWidth" format="dimension" />
+        <attr name="verticalGuidesColor" format="color" />
+        <attr name="verticalGuidesStyle">
+            <flag name="normal" value="0"/>
+            <flag name="dashed" value="1"/>
+        </attr>
+
+        <attr name="barValueTextSize" format="dimension"/>
+        <attr name="barValueTextColor" format="color"/>
+    </declare-styleable>
+</resources>

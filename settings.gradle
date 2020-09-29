@@ -1,0 +1,3 @@
+include ':barchartview'
+include ':app'
+rootProject.name = "BarchartView"
