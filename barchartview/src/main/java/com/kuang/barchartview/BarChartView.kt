@@ -36,10 +36,12 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
     private val mBottomAxisTextPaint: Paint = Paint()
     private val mBottomAxisLinePaint: Paint = Paint() // 绘制底轴线的Paint
 
+    private var mIsShowOrientationLine = true
     private var mOrientationGuidesWidth = pxToSp(1.0F)
     private var mOrientationGuidesColor = Color.GRAY
     private var mOrientationGuidesStyle = 0
 
+    private var mIsShowVerticalLine = false
     private var mVerticalGuidesWidth = pxToSp(1.0F)
     private var mVerticalGuidesColor = Color.GRAY
     private var mVerticalGuidesStyle = 0
@@ -50,6 +52,7 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
     private var mBarValueTextColor = Color.GRAY
     private var mBarValueText = ArrayList<Float>()
 
+    private val mVerticalLinePaint = Paint()
     // 绘制柱子上面值的Paint
     private val mBarValuePaint: Paint = Paint()
     private val mBarPaint = Paint()
@@ -83,6 +86,7 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
         mLeftAxisLinePaint.color = mLeftAxisColor
         mBottomAxisLinePaint.color = mBottomAxisColor
         mOrientationAxisLinePaint.color = mOrientationGuidesColor
+        mVerticalLinePaint.color = mVerticalGuidesColor
         // 设置绘制左轴线相关的Paint属性
         mLeftAxisTextPaint.isAntiAlias = true
         mLeftAxisTextPaint.color = mLeftAxisTextColor
@@ -160,13 +164,21 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
 
     // 绘制横向的参考线
     private fun drawOrientationLine(canvas: Canvas) {
-        val itemHeight = getLeftAxisHeight() / mLeftAxisText.size
-        val width = width
-        val x = getLeftAxisEndPoint().x + mLeftAxisWidth
-        val h = getOriginalPoint().y
-        for (index in 1..mLeftAxisText.size) {
-            val y = (h - (itemHeight * index))
-            canvas.drawLine(x, y.toFloat(), width.toFloat(), y.toFloat(), mOrientationAxisLinePaint)
+        if (mIsShowOrientationLine) {
+            val itemHeight = getLeftAxisHeight() / mLeftAxisText.size
+            val width = width
+            val x = getLeftAxisEndPoint().x + mLeftAxisWidth
+            val h = getOriginalPoint().y
+            for (index in 1..mLeftAxisText.size) {
+                val y = (h - (itemHeight * index))
+                canvas.drawLine(
+                    x,
+                    y.toFloat(),
+                    width.toFloat(),
+                    y.toFloat(),
+                    mOrientationAxisLinePaint
+                )
+            }
         }
     }
 
@@ -266,8 +278,20 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
         mBottomAxisText.forEachIndexed { index, text ->
             commonRect.setEmpty()
             mBottomAxisTextPaint.getTextBounds(text, 0, text.length, commonRect)
-            val x = (itemWidth * (index + 1) - itemCurrent - (commonRect.right / 2)) + getLeftAxisEndPoint().x
-            canvas.drawText(text, x.toFloat(), height.toFloat() - getTextPadding(), mBottomAxisTextPaint)
+            val current = itemWidth * (index + 1) - itemCurrent
+            val x = (current - (commonRect.right / 2)) + getLeftAxisEndPoint().x
+            val y = height.toFloat() - getTextPadding()
+            canvas.drawText(text, x.toFloat(), y, mBottomAxisTextPaint)
+            drawVerticalLine(canvas, current, y)
+        }
+    }
+
+    private fun drawVerticalLine(canvas: Canvas, current: Int, y: Float) {
+        if (mIsShowVerticalLine) {
+            val point = getLeftAxisEndPoint()
+            val originPoint = getOriginalPoint()
+            val x = current + getLeftAxisEndPoint().x
+            canvas.drawLine(x.toFloat(), originPoint.y.toFloat(), x.toFloat(), point.y.toFloat(), mVerticalLinePaint)
         }
     }
 
