@@ -8,16 +8,23 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import kotlin.collections.ArrayList
+import kotlin.math.log
 
-open class BarChartView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : View(context, attrs, defStyleAttr) {
+open class BarChartView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : View(context, attrs, defStyleAttr) {
     companion object {
-        private val TAG = "BarChartView"
+        private const val TAG = "BarChartView"
     }
+
     // 柱子的Rect，用于判断点击事件
-    private lateinit var mBarRectList : ArrayList<Rect>
+    private lateinit var mBarRectList: ArrayList<Rect>
     private var mOnClickListener: OnClickListener? = null
     private val mBarWidth = pxToSp(30.0F).toInt()
     private val commonRect = Rect()
+
     // 绘制左轴文字的相关属性
     private var mLeftAxisTextSize = pxToSp(20.0F)
     private var mLeftAxisColor = Color.BLACK
@@ -53,28 +60,52 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
     private var mBarValueText = ArrayList<Float>()
 
     private val mVerticalLinePaint = Paint()
+
     // 绘制柱子上面值的Paint
     private val mBarValuePaint: Paint = Paint()
     private val mBarPaint = Paint()
 
+    private lateinit var slideCanvas: Canvas
+    private lateinit var slideBitmap: Bitmap
+    private lateinit var leftCanvas: Canvas
+    private lateinit var leftBitmap: Bitmap
+
+    private var mMotionEventLastX = 0F
+    private var mMoveX = 0F
     init {
-        val typeArray =  context.obtainStyledAttributes(attrs, R.styleable.BarChartView)
-        mLeftAxisWidth = typeArray.getDimension(R.styleable.BarChartView_leftAxisWidth, mLeftAxisWidth)
-        mLeftAxisColor = typeArray.getColor(R.styleable.BarChartView_leftAxisColor, mLeftAxisTextColor)
-        mLeftAxisTextSize = typeArray.getDimension(R.styleable.BarChartView_leftAxisTextSize, mLeftAxisTextSize)
-        mLeftAxisTextColor = typeArray.getColor(R.styleable.BarChartView_leftAxisTextColor, mLeftAxisTextColor)
+        val typeArray = context.obtainStyledAttributes(attrs, R.styleable.BarChartView)
+        mLeftAxisWidth =
+            typeArray.getDimension(R.styleable.BarChartView_leftAxisWidth, mLeftAxisWidth)
+        mLeftAxisColor =
+            typeArray.getColor(R.styleable.BarChartView_leftAxisColor, mLeftAxisTextColor)
+        mLeftAxisTextSize =
+            typeArray.getDimension(R.styleable.BarChartView_leftAxisTextSize, mLeftAxisTextSize)
+        mLeftAxisTextColor =
+            typeArray.getColor(R.styleable.BarChartView_leftAxisTextColor, mLeftAxisTextColor)
 
-        mBottomAxisWith = typeArray.getDimension(R.styleable.BarChartView_bottomAxisWidth, mBottomAxisWith)
+        mBottomAxisWith =
+            typeArray.getDimension(R.styleable.BarChartView_bottomAxisWidth, mBottomAxisWith)
         mBottomAxisColor = typeArray.getColor(R.styleable.BarChartView_bottomAxisColor, Color.BLACK)
-        mBottomAxisTextSize = typeArray.getDimension(R.styleable.BarChartView_bottomAxisTextSize, mBottomAxisTextSize)
-        mBottomAxisTextColor = typeArray.getColor(R.styleable.BarChartView_bottomAxisTextColor, Color.BLACK)
+        mBottomAxisTextSize =
+            typeArray.getDimension(R.styleable.BarChartView_bottomAxisTextSize, mBottomAxisTextSize)
+        mBottomAxisTextColor =
+            typeArray.getColor(R.styleable.BarChartView_bottomAxisTextColor, Color.BLACK)
 
-        mOrientationGuidesWidth = typeArray.getDimension(R.styleable.BarChartView_orientationGuidesWidth, mOrientationGuidesWidth)
-        mOrientationGuidesColor = typeArray.getColor(R.styleable.BarChartView_orientationGuidesColor, Color.GRAY)
-        mOrientationGuidesStyle = typeArray.getInt(R.styleable.BarChartView_orientationGuidesStyle, 0)
+        mOrientationGuidesWidth = typeArray.getDimension(
+            R.styleable.BarChartView_orientationGuidesWidth,
+            mOrientationGuidesWidth
+        )
+        mOrientationGuidesColor =
+            typeArray.getColor(R.styleable.BarChartView_orientationGuidesColor, Color.GRAY)
+        mOrientationGuidesStyle =
+            typeArray.getInt(R.styleable.BarChartView_orientationGuidesStyle, 0)
 
-        mVerticalGuidesWidth = typeArray.getDimension(R.styleable.BarChartView_verticalGuidesWidth, mVerticalGuidesWidth)
-        mVerticalGuidesColor = typeArray.getColor(R.styleable.BarChartView_verticalGuidesColor, Color.GRAY)
+        mVerticalGuidesWidth = typeArray.getDimension(
+            R.styleable.BarChartView_verticalGuidesWidth,
+            mVerticalGuidesWidth
+        )
+        mVerticalGuidesColor =
+            typeArray.getColor(R.styleable.BarChartView_verticalGuidesColor, Color.GRAY)
         mVerticalGuidesStyle = typeArray.getInt(R.styleable.BarChartView_verticalGuidesStyle, 0)
         typeArray.recycle()
 
@@ -120,6 +151,30 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
         mOnClickListener = listener
     }
 
+    fun show() {
+        showInternal()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        showInternal()
+    }
+    
+    private fun showInternal() {
+        if (width <= 0) {
+            return
+        }
+        val leftPoint = getLeftAxisEndPoint().x + mLeftAxisWidth.toInt()
+        val slideCanvasLeft = width - leftPoint
+        slideBitmap = Bitmap.createBitmap(slideCanvasLeft, height, Bitmap.Config.RGB_565)
+        slideCanvas = Canvas(slideBitmap)
+        slideCanvas.drawColor(Color.WHITE)
+
+        leftBitmap = Bitmap.createBitmap(leftPoint, height, Bitmap.Config.RGB_565)
+        leftCanvas = Canvas(leftBitmap)
+        leftCanvas.drawColor(Color.WHITE)
+    }
+
     override fun onSaveInstanceState(): Parcelable? {
         return super.onSaveInstanceState()
     }
@@ -128,15 +183,18 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
         super.onRestoreInstanceState(state)
     }
 
-    private var mMotionEventLastX = 0F
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (event == null) {
             return super.onTouchEvent(event)
         }
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                mMotionEventLastX = event.x
             }
             MotionEvent.ACTION_MOVE -> {
+                mMoveX -= mMotionEventLastX - event.x
+                mMotionEventLastX = event.x
+                invalidate()
             }
             MotionEvent.ACTION_UP -> {
                 mBarRectList.forEachIndexed { index, rect ->
@@ -154,12 +212,16 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
         if (canvas == null) {
             return
         }
-        drawLeftAxisLine(canvas)
-        drawLeftAxisText(canvas)
-        drawBottomAxisLine(canvas)
-        drawBottomAxisText(canvas)
-        drawOrientationLine(canvas)
-        drawBar(canvas)
+        showInternal()
+        drawLeftAxisLine(leftCanvas)
+        drawLeftAxisText(leftCanvas)
+        drawBottomAxisLine(slideCanvas)
+        drawBottomAxisText(slideCanvas)
+        drawOrientationLine(slideCanvas)
+        drawBar(slideCanvas)
+        val leftPoint = getLeftAxisEndPoint().x + mLeftAxisWidth.toInt()
+        canvas.drawBitmap(slideBitmap, leftPoint.toFloat() + mMoveX, 0F, null)
+        canvas.drawBitmap(leftBitmap, 0F, 0F, null)
     }
 
     // 绘制横向的参考线
@@ -167,7 +229,7 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
         if (mIsShowOrientationLine) {
             val itemHeight = getLeftAxisHeight() / mLeftAxisText.size
             val width = width
-            val x = getLeftAxisEndPoint().x + mLeftAxisWidth
+            val x = mLeftAxisWidth
             val h = getOriginalPoint().y
             for (index in 1..mLeftAxisText.size) {
                 val y = (h - (itemHeight * index))
@@ -201,7 +263,7 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
     private fun getBarTop(value: Float): Float {
         mLeftAxisText.forEachIndexed { index, i ->
             val next = mLeftAxisText[index + 1]
-            if (value >= i &&  value < next) {
+            if (value >= i && value < next) {
                 //Y轴的最大值是多少，那么就可以分割多少个item。暂时没有考虑float的情况
                 val itemHeight = getLeftAxisHeight() / mLeftAxisText.size
                 // 先求出占用了多少item，并得出所占item的总高度
@@ -259,7 +321,7 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
         val originalPoint = getOriginalPoint()
         val bottomPoint = getBottomAxisEndPoint()
         val rect = Rect()
-        rect.left = originalPoint.x
+        rect.left = 0
         rect.top = originalPoint.y - mBottomAxisWith.toInt()
         rect.right = bottomPoint.x
         rect.bottom = originalPoint.y
@@ -279,7 +341,7 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
             commonRect.setEmpty()
             mBottomAxisTextPaint.getTextBounds(text, 0, text.length, commonRect)
             val current = itemWidth * (index + 1) - itemCurrent
-            val x = (current - (commonRect.right / 2)) + getLeftAxisEndPoint().x
+            val x = (current - (commonRect.right / 2))
             val y = height.toFloat() - getTextPadding()
             canvas.drawText(text, x.toFloat(), y, mBottomAxisTextPaint)
             drawVerticalLine(canvas, current, y)
@@ -291,7 +353,13 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
             val point = getLeftAxisEndPoint()
             val originPoint = getOriginalPoint()
             val x = current + getLeftAxisEndPoint().x
-            canvas.drawLine(x.toFloat(), originPoint.y.toFloat(), x.toFloat(), point.y.toFloat(), mVerticalLinePaint)
+            canvas.drawLine(
+                x.toFloat(),
+                originPoint.y.toFloat(),
+                x.toFloat(),
+                point.y.toFloat(),
+                mVerticalLinePaint
+            )
         }
     }
 
@@ -362,7 +430,7 @@ open class BarChartView @JvmOverloads constructor(context: Context, attrs: Attri
         return (pxValue * fontScale)
     }
 
-    interface OnClickListener{
+    interface OnClickListener {
         fun onClick(index: Int)
     }
 }
